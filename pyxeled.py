@@ -1,6 +1,35 @@
 
 # Configuration
 
+from skimage import color as color_lib
+from PIL import Image
+
+image = Image.open("input.png")
+image_data = image.load()
+
+w_in, h_in = image.size 
+in_rgb = [[list(image_data[r, c]) for r in range(w_in)] for c in range(h_in)]
+in_rgb = [[[in_rgb[r][c][i] / 255 for i in range(3)] for r in range(w_in)] for c in range(h_in)]
+
+in_image = color_lib.rgb2lab(in_rgb)
+
+for r in range(w_in):
+    for c in range(h_in):
+        print(in_image[r][c][0], in_image[r][c][1], in_image[r][c][2])
+    print()
+
+test_image = color_lib.lab2rgb(in_image)
+test_image = [[[test_image[r][c][i] * 255 for i in range(3)] for r in range(w_in)] for c in range(h_in)] 
+
+output = image.copy()
+out_data = output.load()
+for r in range(w_in):
+    for c in range(h_in):
+        out_data[r,c] = tuple(test_image[r][c])
+
+output.save("test.png")
+exit()
+
 T = 200
 T_final = 1
 alpha = 0.7
@@ -148,8 +177,6 @@ def sp_refine():
             sp.update_pos()
             sp.update_color()
 
-
-
 def associate():
     global super_pixels, palette 
     for sp in super_pixels:
@@ -166,13 +193,57 @@ def associate():
 
 def palette_refine():
     global super_pixels, palette 
+    total_change = 0
     for k in range(2 * K):
         new_color = [0, 0, 0]
         for sp in super_pixels:
             for i in range(3):
                 new_color[i] += (sp.sp_color[i] * sp.p_c[k] * sp.p_s) / palette[k].probability
 
+        old_color = palette[k].color
         palette[k].color = tuple(new_color)
+        total_change += diff_color(old_color, new_color)
+
+    return total_change
+
+def expand():
+    global clusters, palette, epsilon_cluster
+
+    for i in range(K):
+        if (K >= K_max):
+            break
+
+
+        c1 = palette[clusters[i][0]]
+        c2 = palette[clusters[i][1]]
+
+        if diff_color(c1.color, c2.color) > epsilon_cluster:
+            K += 1
+            palette.append(Color(c1.color, c1.probability / 2))
+            palette.append(Color(c2.color, c2.probability / 2))
+
+            clusters.append((clusters[i][1], len(palette)-1))
+            clusters[i] = (clusters[i][0], len(palette)-2)
+
+            assert abs(palette[clusters[i][0]].probability - palette[clusters[i][1]].probability) < epsilon_cluster
+            assert abs(palette[clusters[-1][0]].probability - palette[clusters[-1][1]].probability) < epsilon_cluster
+
+    # So sub-clusters can separate
+    for i in range(K):
+        c = palette[clusters[i][1]]
+        c.perturb()
+
+#######################################################################################################
+
+while T > T_final:
+    sp_refine()
+    associate()
+    total_change = palette_refine()
+    if total_change < epsilon_palette:
+        T *= alpha
+        expand()
 
 
     
+
+
