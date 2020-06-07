@@ -16,10 +16,10 @@ in_image = color_lib.rgb2lab(in_rgb)
 T = 200
 T_final = 1
 alpha = 0.7
-delta = 1.0 
+delta = 1.5 
 e = 2.71828
-epsilon_palette = 0.1
-epsilon_cluster = 0.1
+epsilon_palette = 0.001
+epsilon_cluster = 0.001
 
 K = 1
 K_max = 8
@@ -109,7 +109,7 @@ class Color:
 
     def perturb(self):
         global delta
-        color = (self.color[0] + delta, self.color[1], self.color[2])
+        self.color = (self.color[0] + delta, self.color[1], self.color[2])
 
 #######################################################################################################
 
@@ -243,16 +243,24 @@ while T > T_final:
     print("K", K)
     print("T", T)
     print("iterations", iterations)
+
+    for k in range(K):
+        print()
+        print(k)
+        for j in range(3):
+            print(palette[clusters[k][0]].color[j], end=" ")
+        print()
+        for j in range(3):
+            print(palette[clusters[k][1]].color[j], end=" ")
+        print()
+
     iterations += 1
 
     sp_refine()
-    print("sp refine complete")
 
     associate()
-    print("associate complete")
 
     total_change = palette_refine()
-    print("palette refine complete")
 
     if total_change < epsilon_palette:
         T *= alpha
