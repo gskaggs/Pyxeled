@@ -225,10 +225,24 @@ def sp_refine():
         t.join()
 
      # Update color and position
-    for row in super_pixels:
-        for sp in row:
+    for r in range(w_out):
+        for c in range(h_out):
+            sp = super_pixels[r][c]
             sp.update_pos()
             sp.update_sp_color()
+            
+            dx = [0, 0, -1, 1]
+            dy = [1, -1, 0, 0]
+            n = 0
+            new_x, new_y = 0, 0
+            for i in range(4):
+                if in_bounds(dx[i]+r, dy[i]+c):
+                    n += 1
+                    new_x += super_pixels[dx[i]+r][dy[i]+c].x
+                    new_y += super_pixels[dx[i]+r][dy[i]+c].y
+            new_x /= n 
+            new_y /= n 
+            sp.x, sp.y = 0.4 * new_x + 0.6 * sp.x, 0.4 * new_y + 0.6 * sp.y
 
 def associate():
     global super_pixels, palette 
