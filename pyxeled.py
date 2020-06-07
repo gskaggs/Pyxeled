@@ -18,7 +18,7 @@ T_final = 1
 alpha = 0.7
 delta = 1.5 
 e = 2.71828
-epsilon_palette = 0.1
+epsilon_palette = 1
 epsilon_cluster = 0.25
 
 K = 1
@@ -110,7 +110,7 @@ class Color:
 
     def perturb(self):
         global delta
-        self.color = (self.color[0] + delta, self.color[1], self.color[2])
+        self.color = (self.color[0] + delta, self.color[1] + delta, self.color[2] + delta)
 
 #######################################################################################################
 
