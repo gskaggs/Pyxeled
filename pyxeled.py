@@ -330,7 +330,9 @@ for r in range(w_out):
         cur.append(list(super_pixels[r][c].pallete_color))
     out_lab.append(cur)
 
+prev = out_lab[0][0][1]
 saturate(out_lab)
+assert out_lab[0][0][1] == 1.1*prev
 
 out_image = color_lib.lab2rgb(out_lab)
 out_image = [[[int(round(out_image[r][c][i] * 255)) for i in range(3)] for c in range(h_out)] for r in range(w_out)] 
