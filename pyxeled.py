@@ -18,11 +18,13 @@ T_final = 1
 alpha = 0.7
 delta = 1.0 
 e = 2.71828
+epsilon_palette = 0.1
+epsilon_cluster = 0.1
 
 K = 1
 K_max = 8
 
-w_out = 32
+w_out = 22
 h_out = 32
 
 M = w_in * h_in 
@@ -37,12 +39,9 @@ def color_diff(c1, c2):
     return res #(sum( [(c1[i] - c2[i])**2 for i in range(3)] ))**0.5
 
 class SuperPixel:
-    n = 0
     def __init__(self, x, y, c):
         global N
         self.x, self.y, self.pallete_color = x, y, c
-#print(self.pallete_color, SuperPixel.n)
-        SuperPixel.n+=1
         self.p_s = 1 / N
         self.pixels = set()
         self.p_c = [0.5, 0.5]
@@ -64,13 +63,13 @@ class SuperPixel:
     def clear_pixels(self):
         self.pixels = set()
 
-    def update_pos():
+    def update_pos(self):
         self.x, self.y = 0, 0
         for pxl in self.pixels:
             self.x += pxl[0]
             self.y += pxl[1]
-        self.x /= len(pixels)
-        self.y /= len(pixels)
+        self.x /= len(self.pixels)
+        self.y /= len(self.pixels)
 
     # update pallete color as well
     def normalize_probs(self):
@@ -132,13 +131,17 @@ def avg_color(in_image, M):
 X = [(r * w_in) // w_out for r in range(w_out)]
 Y = [(c * h_in) // h_out for c in range(h_out)]
 init_color = avg_color(in_image, M)
-super_pixels = [[SuperPixel(x,y,init_color) for x in X] for y in Y]
+super_pixels = [[SuperPixel(x,y,init_color) for y in Y] for x in X]
+
 
 clusters = [(0,1)]
 palette = [Color(init_color, 0.5), Color(init_color, 0.5)]
 palette[1].perturb()
 
 #######################################################################################################
+def in_bounds(r, c):
+    global w_out, h_out
+    return r >= 0 and c >= 0 and r < w_out and c < h_out
 
 def sp_refine():
     global super_pixels, in_image
@@ -151,48 +154,57 @@ def sp_refine():
         for y in range(h_in):
             best_pair = (-1, -1)
             best_cost = 10**9
+            
+            dx = [-1, -1, -1, 0, 0, 0, 1, 1, 1]
+            dy = [-1, 0, 1, -1, 0, 1,-1, 0, 1] 
+            r = (x * w_out) // w_in
+            c = (y * h_out) // h_in
 
-            for r in range(w_out):
-                for c in range(h_out):
-                    cur = sp[r][c].cost(x, y)
+            for i in range(9):
+                if in_bounds(dx[i]+r, dy[i]+c):
+                    cur = super_pixels[dx[i]+r][dy[i]+c].cost(x, y)
                     if cur < best_cost:
                         best_cost = cur
-                        best_pair = (r, c)
+                        best_pair = (dx[i]+r, dy[i]+c)
 
-            sp[best_pair[0]][best_pair[1]].add_pixel(x, y)
+            super_pixels[best_pair[0]][best_pair[1]].add_pixel(x, y)
 
     # Update color and position
     for row in super_pixels:
         for sp in row:
             sp.update_pos()
-            sp.update_color()
+            sp.update_sp_color()
 
 def associate():
     global super_pixels, palette 
-    for sp in super_pixels:
-        sp.p_c = [0] * 2 * K
-        for k in range(2 * K):
-            sp.p_c[k] = palette[k].condit_prob(sp)
-        sp.normalize_probs()
+    for row in super_pixels:
+        for sp in row:
+            sp.p_c = [0] * (2 * K)
+            for k in range(2 * K):
+                sp.p_c[k] = palette[k].condit_prob(sp)
+            sp.normalize_probs()
             
 
     for k in range(2 * K):
         palette[k].probability = 0
-        for sp in super_pixels:
-            palette[k].probability += sp.p_c[k] * sp.p_s
+
+        for row in super_pixels:
+            for sp in row:
+                palette[k].probability += sp.p_c[k] * sp.p_s
 
 def palette_refine():
     global super_pixels, palette 
     total_change = 0
     for k in range(2 * K):
         new_color = [0, 0, 0]
-        for sp in super_pixels:
-            for i in range(3):
-                new_color[i] += (sp.sp_color[i] * sp.p_c[k] * sp.p_s) / palette[k].probability
+        for row in super_pixels:
+            for sp in row:
+                for i in range(3):
+                    new_color[i] += (sp.sp_color[i] * sp.p_c[k] * sp.p_s) / palette[k].probability
 
         old_color = palette[k].color
         palette[k].color = tuple(new_color)
-        total_change += diff_color(old_color, new_color)
+        total_change += color_diff(old_color, new_color)
 
     return total_change
 
@@ -225,10 +237,15 @@ def expand():
 
 #######################################################################################################
 
-while False: #T > T_final:
+#while T > T_final:
+for i in range(3):
+    print("K", K)
     sp_refine()
+    print("sp refine complete")
     associate()
+    print("associate complete")
     total_change = palette_refine()
+    print("palette refine complete")
     if total_change < epsilon_palette:
         T *= alpha
         expand()
