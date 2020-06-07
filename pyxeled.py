@@ -3,6 +3,7 @@
 
 from skimage import color as color_lib
 from PIL import Image
+import threading
 
 image = Image.open("input.png")
 image_data = image.load()
@@ -20,6 +21,7 @@ delta = 1.5
 e = 2.71828
 epsilon_palette = 1
 epsilon_cluster = 0.25
+num_threads = 6
 
 K = 1
 K_max = 8
@@ -38,6 +40,24 @@ def color_diff(c1, c2):
     res = res**0.5
     return res #(sum( [(c1[i] - c2[i])**2 for i in range(3)] ))**0.5
 
+class Coords:
+    def __init__(self):
+        self.n = 0
+        self._lock = threading.Lock()
+
+    def next(self):
+        global w_in, h_in, N
+        with self._lock:
+            if self.n >= M:
+                return None 
+            res = (self.n % w_in, self.n // w_in)
+            self.n += 1 
+            return res 
+
+    def reset(self):
+        self.n = 0
+            
+
 class SuperPixel:
     def __init__(self, x, y, c):
         global N
@@ -46,6 +66,7 @@ class SuperPixel:
         self.pixels = set()
         self.p_c = [0.5, 0.5]
         self.sp_color = (0, 0 , 0)
+        self._lock = threading.Lock()
 
     def cost(self, x0, y0):
         global in_image
@@ -58,7 +79,8 @@ class SuperPixel:
 
 
     def add_pixel(self, x0, y0):
-        self.pixels.add((x0, y0))
+        with self._lock:
+            self.pixels.add((x0, y0))
 
     def clear_pixels(self):
         self.pixels = set()
@@ -145,7 +167,7 @@ def avg_color(in_image, M):
 
     return tuple(res)
 
-
+coords = Coords()
 X = [(r * w_in) // w_out for r in range(w_out)]
 Y = [(c * h_in) // h_out for c in range(h_out)]
 init_color = avg_color(in_image, M)
@@ -161,20 +183,17 @@ def in_bounds(r, c):
     global w_out, h_out
     return r >= 0 and c >= 0 and r < w_out and c < h_out
 
-def sp_refine():
-    global super_pixels, in_image
-    for row in super_pixels:
-        for sp in row:
-            sp.clear_pixels()
-
-    # Update pixel association
-    for x in range(w_in):
-        for y in range(h_in):
+def thread_function():
+    global coords, super_pixels
+    while True:
+        cur = coords.next()
+        if cur:
+            x, y = cur 
             best_pair = (-1, -1)
             best_cost = 10**9
             
             dx = [-1, -1, -1, 0, 0, 0, 1, 1, 1]
-            dy = [-1, 0, 1, -1, 0, 1,-1, 0, 1] 
+            dy = [-1, 0, 1, -1, 0, 1, -1, 0, 1] 
             r = (x * w_out) // w_in
             c = (y * h_out) // h_in
 
@@ -187,7 +206,25 @@ def sp_refine():
 
             super_pixels[best_pair[0]][best_pair[1]].add_pixel(x, y)
 
-    # Update color and position
+        else:
+            break
+
+def sp_refine():
+    global super_pixels, in_image, coords
+    for row in super_pixels:
+        for sp in row:
+            sp.clear_pixels()
+
+    threads = []
+    coords.reset()
+    for i in range(num_threads):
+        threads.append(threading.Thread(target=thread_function))
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+     # Update color and position
     for row in super_pixels:
         for sp in row:
             sp.update_pos()
