@@ -14,7 +14,7 @@ in_rgb = [[[in_rgb[r][c][i] / 255 for i in range(3)] for c in range(h_in)] for r
 in_image = color_lib.rgb2lab(in_rgb)
 
 T = 25 
-T_final = 1
+T_final = 3 
 alpha = 0.7
 delta = 1.5 
 e = 2.71828
@@ -73,7 +73,7 @@ class SuperPixel:
 
     # update pallete color as well
     def normalize_probs(self):
-        global palette 
+        global palette, clusters, K
         denom = sum(self.p_c)
         hi = max(self.p_c)
         
@@ -81,6 +81,23 @@ class SuperPixel:
             if self.p_c[i] == hi:
                 self.pallete_color = palette[i].color
             self.p_c[i] /= denom
+
+        hi = -1
+        for k in range(K):
+            cluster = clusters[k]
+            prob = 0
+            color = [0, 0, 0]
+            for i in range(len(cluster)):
+                cur = palette[cluster[i]]
+                prob += cur.probability
+                for j in range(3):
+                    color[j] += cur.color[j]
+            for j in range(3):
+                color[j] /= len(cluster)
+            if prob > hi:
+                hi = prob
+                self.palette_color = color
+
 
 
     def update_sp_color(self):
@@ -180,8 +197,8 @@ def associate():
     global super_pixels, palette 
     for row in super_pixels:
         for sp in row:
-            sp.p_c = [0] * (2 * K)
-            for k in range(2 * K):
+            sp.p_c = [0] * (len(palette))
+            for k in range(len(palette)):
                 sp.p_c[k] = palette[k].condit_prob(sp)
             sp.normalize_probs()
 # for p in sp.p_c:
@@ -189,7 +206,7 @@ def associate():
 #            print()
             
 
-    for k in range(2 * K):
+    for k in range(len(palette)):
         palette[k].probability = 0
 
         for row in super_pixels:
@@ -200,7 +217,7 @@ def associate():
 def palette_refine():
     global super_pixels, palette 
     total_change = 0
-    for k in range(2 * K):
+    for k in range(len(palette)):
         new_color = [0, 0, 0]
         for row in super_pixels:
             for sp in row:
@@ -238,10 +255,32 @@ def expand():
             assert abs(palette[clusters[i][0]].probability - palette[clusters[i][1]].probability) < epsilon_cluster
             assert abs(palette[clusters[-1][0]].probability - palette[clusters[-1][1]].probability) < epsilon_cluster
 
-    # So sub-clusters can separate
-    for i in range(K):
-        c = palette[clusters[i][1]]
-        c.perturb()
+    if K >= K_max:
+        new_palette = []
+        new_clusters = [] 
+        for k in range(K):
+            c = clusters[k]
+            if len(c) == 2:
+                c1 = palette[c[0]]
+                c2 = palette[c[1]]
+                new_color = [0,0,0]
+                for i in range(3):
+                    new_color[i] = (c1.color[i] + c2.color[i])/2
+                cur = Color(tuple(new_color), c1.probability + c2.probability)
+                new_palette.append(cur)
+                new_clusters.append(tuple([k]))
+            else:
+                assert False
+
+        palette = new_palette
+        clusters = new_clusters
+                
+
+    else:
+        # So sub-clusters can separate
+        for i in range(K):
+            c = palette[clusters[i][1]]
+            c.perturb()
 
 #######################################################################################################
 
@@ -253,13 +292,10 @@ while T > T_final:
     print("iterations", iterations)
 
     for k in range(K):
-        print()
-        print(k)
-        for j in range(3):
-            print(palette[clusters[k][0]].color[j], end=" ")
-        print()
-        for j in range(3):
-            print(palette[clusters[k][1]].color[j], end=" ")
+        for h in range(len(clusters[k])):
+            for j in range(3):
+                print(palette[clusters[k][h]].color[j], end=" ")
+            print()
         print()
 
     iterations += 1
@@ -272,7 +308,8 @@ while T > T_final:
 
     if total_change < epsilon_palette:
         T *= alpha
-        expand()
+        if K < K_max:
+            expand()
 
     print()
 
