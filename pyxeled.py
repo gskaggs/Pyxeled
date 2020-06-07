@@ -13,13 +13,13 @@ in_rgb = [[[in_rgb[r][c][i] / 255 for i in range(3)] for c in range(h_in)] for r
 
 in_image = color_lib.rgb2lab(in_rgb)
 
-T = 200
+T = 25 
 T_final = 1
 alpha = 0.7
 delta = 1.5 
 e = 2.71828
-epsilon_palette = 0.001
-epsilon_cluster = 0.001
+epsilon_palette = 0.1
+epsilon_cluster = 0.25
 
 K = 1
 K_max = 8
@@ -95,6 +95,7 @@ class SuperPixel:
             c[i] /= len(self.pixels)
 
         self.sp_color = tuple(c)
+#print(self.sp_color[0], self.sp_color[0], self.sp_color[0])
 
 
 
@@ -105,7 +106,7 @@ class Color:
 
     def condit_prob(self, sp):
         global T, e
-        return self.probability * (-1 * e ** (color_diff(sp.sp_color, self.color) / T))
+        return self.probability * (e ** (-1 * color_diff(sp.sp_color, self.color) / T))
 
     def perturb(self):
         global delta
@@ -183,6 +184,9 @@ def associate():
             for k in range(2 * K):
                 sp.p_c[k] = palette[k].condit_prob(sp)
             sp.normalize_probs()
+# for p in sp.p_c:
+#                print(p, end=" ")
+#            print()
             
 
     for k in range(2 * K):
@@ -191,6 +195,7 @@ def associate():
         for row in super_pixels:
             for sp in row:
                 palette[k].probability += sp.p_c[k] * sp.p_s
+        print("P_", k, palette[k].probability)
 
 def palette_refine():
     global super_pixels, palette 
@@ -223,6 +228,9 @@ def expand():
             K += 1
             palette.append(Color(c1.color, c1.probability / 2))
             palette.append(Color(c2.color, c2.probability / 2))
+            c1.probability /= 2
+            c2.probability /= 2
+
 
             clusters.append((clusters[i][1], len(palette)-1))
             clusters[i] = (clusters[i][0], len(palette)-2)
