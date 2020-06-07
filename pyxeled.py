@@ -244,15 +244,21 @@ while T > T_final:
     print("T", T)
     print("iterations", iterations)
     iterations += 1
+
     sp_refine()
     print("sp refine complete")
+
     associate()
     print("associate complete")
+
     total_change = palette_refine()
     print("palette refine complete")
+
     if total_change < epsilon_palette:
         T *= alpha
         expand()
+
+    print()
 
 
 
