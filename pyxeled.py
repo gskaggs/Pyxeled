@@ -8,18 +8,26 @@ image = Image.open("input.png")
 image_data = image.load()
 
 w_in, h_in = image.size 
-in_rgb = [[list(image_data[r, c]) for r in range(w_in)] for c in range(h_in)]
-in_rgb = [[[in_rgb[r][c][i] / 255 for i in range(3)] for r in range(w_in)] for c in range(h_in)]
+in_rgb = [[list(image_data[r, c]) for c in range(h_in)] for r in range(w_in)]
+print(in_rgb[0][0])
+in_rgb = [[[in_rgb[r][c][i] / 255 for i in range(3)] for c in range(h_in)] for r in range(w_in)]
 
 in_image = color_lib.rgb2lab(in_rgb)
 
+print("in image LAB")
 for r in range(w_in):
     for c in range(h_in):
         print(in_image[r][c][0], in_image[r][c][1], in_image[r][c][2])
     print()
 
 test_image = color_lib.lab2rgb(in_image)
-test_image = [[[test_image[r][c][i] * 255 for i in range(3)] for r in range(w_in)] for c in range(h_in)] 
+test_image = [[[int(round(test_image[r][c][i] * 255)) for i in range(3)] for c in range(h_in)] for r in range(w_in)] 
+
+print("test image RGB")
+for r in range(w_in):
+    for c in range(h_in):
+        print(test_image[r][c][0], test_image[r][c][1], test_image[r][c][2])
+    print()
 
 output = image.copy()
 out_data = output.load()
