@@ -37,10 +37,12 @@ def color_diff(c1, c2):
     return res #(sum( [(c1[i] - c2[i])**2 for i in range(3)] ))**0.5
 
 class SuperPixel:
-    
+    n = 0
     def __init__(self, x, y, c):
         global N
         self.x, self.y, self.pallete_color = x, y, c
+#print(self.pallete_color, SuperPixel.n)
+        SuperPixel.n+=1
         self.p_s = 1 / N
         self.pixels = set()
         self.p_c = [0.5, 0.5]
@@ -237,15 +239,15 @@ out_lab = []
 for r in range(w_out):
     cur = []
     for c in range(h_out):
-        # Should use cluster, not sub-cluster
-        cur.append(list(super_pixels[r][c].palette_color))
+        # Should use cluster, not sub-cluster  pallete_color
+        cur.append(list(super_pixels[r][c].pallete_color))
     out_lab.append(cur)
 
 out_image = color_lib.lab2rgb(out_lab)
 out_image = [[[int(round(out_image[r][c][i] * 255)) for i in range(3)] for c in range(h_out)] for r in range(w_out)] 
 
 
-output = Image.new("P", (w_out, h_out)) 
+output = Image.new("RGB", (w_out, h_out)) 
 out_data = output.load()
 for r in range(w_out):
     for c in range(h_out):
