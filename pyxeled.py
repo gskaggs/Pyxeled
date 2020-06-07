@@ -282,6 +282,13 @@ def expand():
             c = palette[clusters[i][1]]
             c.perturb()
 
+def saturate(out_lab):
+    for r in range(w_out):
+        for c in range(h_out):
+            out_lab[r][c][1] *= 1.1
+            out_lab[r][c][2] *= 1.1
+
+
 #######################################################################################################
 
 iterations = 0
@@ -322,6 +329,8 @@ for r in range(w_out):
         # Should use cluster, not sub-cluster  pallete_color
         cur.append(list(super_pixels[r][c].pallete_color))
     out_lab.append(cur)
+
+saturate(out_lab)
 
 out_image = color_lib.lab2rgb(out_lab)
 out_image = [[[int(round(out_image[r][c][i] * 255)) for i in range(3)] for c in range(h_out)] for r in range(w_out)] 
