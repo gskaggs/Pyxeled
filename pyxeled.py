@@ -9,34 +9,9 @@ image_data = image.load()
 
 w_in, h_in = image.size 
 in_rgb = [[list(image_data[r, c]) for c in range(h_in)] for r in range(w_in)]
-print(in_rgb[0][0])
 in_rgb = [[[in_rgb[r][c][i] / 255 for i in range(3)] for c in range(h_in)] for r in range(w_in)]
 
 in_image = color_lib.rgb2lab(in_rgb)
-
-print("in image LAB")
-for r in range(w_in):
-    for c in range(h_in):
-        print(in_image[r][c][0], in_image[r][c][1], in_image[r][c][2])
-    print()
-
-test_image = color_lib.lab2rgb(in_image)
-test_image = [[[int(round(test_image[r][c][i] * 255)) for i in range(3)] for c in range(h_in)] for r in range(w_in)] 
-
-print("test image RGB")
-for r in range(w_in):
-    for c in range(h_in):
-        print(test_image[r][c][0], test_image[r][c][1], test_image[r][c][2])
-    print()
-
-output = image.copy()
-out_data = output.load()
-for r in range(w_in):
-    for c in range(h_in):
-        out_data[r,c] = tuple(test_image[r][c])
-
-output.save("test.png")
-exit()
 
 T = 200
 T_final = 1
@@ -47,8 +22,12 @@ e = 2.71828
 K = 1
 K_max = 8
 
+w_out = 32
+h_out = 32
+
 M = w_in * h_in 
-N = h_in * h_out
+N = w_out * h_out
+
 
 
 #######################################################################################################
@@ -58,77 +37,78 @@ def color_diff(c1, c2):
     return res #(sum( [(c1[i] - c2[i])**2 for i in range(3)] ))**0.5
 
 class SuperPixel:
-    pixels = set()
-    p_c = [1]
-    sp_color = (0, 0 , 0)
-
+    
     def __init__(self, x, y, c):
         global N
         self.x, self.y, self.pallete_color = x, y, c
         self.p_s = 1 / N
+        self.pixels = set()
+        self.p_c = [0.5, 0.5]
+        self.sp_color = (0, 0 , 0)
 
     def cost(self, x0, y0):
         global in_image
 
         in_color = in_image[x0][y0]
-        c_diff = color_diff(in_color, pallete_color)         
-        spatial_diff = ((x-x0)**2 + (y-y0)**2)**0.5
+        c_diff = color_diff(in_color, self.pallete_color)         
+        spatial_diff = ((self.x-x0)**2 + (self.y-y0)**2)**0.5
 
         return c_diff + 45 * ((N / M)**0.5) * spatial_diff;
 
 
     def add_pixel(self, x0, y0):
-        pixels.add((x0, y0))
+        self.pixels.add((x0, y0))
 
     def clear_pixels(self):
-        pixels = set()
+        self.pixels = set()
 
     def update_pos():
-        x, y = 0, 0
-        for pxl in pixels:
-            x += pxl[0]
-            y += pxl[1]
-        x /= len(pixels)
-        y /= len(pixels)
+        self.x, self.y = 0, 0
+        for pxl in self.pixels:
+            self.x += pxl[0]
+            self.y += pxl[1]
+        self.x /= len(pixels)
+        self.y /= len(pixels)
 
     # update pallete color as well
     def normalize_probs(self):
         global palette 
-        denom = sum(p_c)
-        hi = max(p_c)
+        denom = sum(self.p_c)
+        hi = max(self.p_c)
         
-        for i in range(len(p_c)):
-            if p_c[i] == hi:
-                pallete_color = palette[i].color
-            p_c[i] /= denom
+        for i in range(len(self.p_c)):
+            if self.p_c[i] == hi:
+                self.pallete_color = palette[i].color
+            self.p_c[i] /= denom
 
 
     def update_sp_color(self):
         global in_image
         c = [0, 0, 0]        
         
-        for pxl in pixels:
-            c += in_image[pxl[0]][pxl[1]]
+        for pxl in self.pixels:
+            for i in range(3):
+                c[i] += in_image[pxl[0]][pxl[1]][i]
         
         for i in range(3):
-            c[i] /= len(pixels)
+            c[i] /= len(self.pixels)
 
-        sp_color = tuple(c)
+        self.sp_color = tuple(c)
 
 
 
 class Color:
-    
+
     def __init__(self, c, p):
         self.color, self.probability = c, p
 
     def condit_prob(self, sp):
         global T, e
-        return probability * (-1 * e ** (color_diff(sp.sp_color, color) / T))
+        return self.probability * (-1 * e ** (color_diff(sp.sp_color, self.color) / T))
 
     def perturb(self):
         global delta
-        color = (color[0] + delta, color[1], color[2])
+        color = (self.color[0] + delta, self.color[1], self.color[2])
 
 #######################################################################################################
 
@@ -243,7 +223,7 @@ def expand():
 
 #######################################################################################################
 
-while T > T_final:
+while False: #T > T_final:
     sp_refine()
     associate()
     total_change = palette_refine()
@@ -251,6 +231,28 @@ while T > T_final:
         T *= alpha
         expand()
 
+
+
+out_lab = []
+for r in range(w_out):
+    cur = []
+    for c in range(h_out):
+        # Should use cluster, not sub-cluster
+        cur.append(list(super_pixels[r][c].palette_color))
+    out_lab.append(cur)
+
+out_image = color_lib.lab2rgb(out_lab)
+out_image = [[[int(round(out_image[r][c][i] * 255)) for i in range(3)] for c in range(h_out)] for r in range(w_out)] 
+
+
+output = Image.new("P", (w_out, h_out)) 
+out_data = output.load()
+for r in range(w_out):
+    for c in range(h_out):
+        out_data[r,c] = tuple(out_image[r][c])
+
+output.save("output.png")
+exit()
 
     
 
