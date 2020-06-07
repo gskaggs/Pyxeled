@@ -209,7 +209,7 @@ def palette_refine():
     return total_change
 
 def expand():
-    global clusters, palette, epsilon_cluster
+    global clusters, palette, epsilon_cluster, K, K_max
 
     for i in range(K):
         if (K >= K_max):
@@ -219,7 +219,7 @@ def expand():
         c1 = palette[clusters[i][0]]
         c2 = palette[clusters[i][1]]
 
-        if diff_color(c1.color, c2.color) > epsilon_cluster:
+        if color_diff(c1.color, c2.color) > epsilon_cluster:
             K += 1
             palette.append(Color(c1.color, c1.probability / 2))
             palette.append(Color(c2.color, c2.probability / 2))
@@ -237,9 +237,13 @@ def expand():
 
 #######################################################################################################
 
-#while T > T_final:
-for i in range(3):
+iterations = 0
+while T > T_final:
+#for i in range(3):
     print("K", K)
+    print("T", T)
+    print("iterations", iterations)
+    iterations += 1
     sp_refine()
     print("sp refine complete")
     associate()
