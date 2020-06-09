@@ -15,7 +15,7 @@ in_rgb = [[[in_rgb[r][c][i] / 255 for i in range(3)] for c in range(h_in)] for r
 in_image = color_lib.rgb2lab(in_rgb)
 
 T = 25 
-T_final = 3 
+T_final = 1 
 alpha = 0.7
 delta = 1.5 
 e = 2.71828
