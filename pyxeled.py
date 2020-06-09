@@ -224,13 +224,20 @@ def sp_refine():
     for t in threads:
         t.join()
 
-     # Update color and position
+    # Update color and position
     for r in range(w_out):
         for c in range(h_out):
             sp = super_pixels[r][c]
             sp.update_pos()
             sp.update_sp_color()
-            
+ 
+    # Lambertian smoothing
+    new_coords = [[(0,0) for c in range(h_out)] for r in range(w_out)] 
+    new_colors = [[(0,0,0) for c in range(h_out)] for r in range(w_out)]  
+    
+    for r in range(w_out):
+        for c in range(h_out):
+            sp = super_pixels[r][c]
             dx = [0, 0, -1, 1]
             dy = [1, -1, 0, 0]
             n = 0
@@ -242,7 +249,12 @@ def sp_refine():
                     new_y += super_pixels[dx[i]+r][dy[i]+c].y
             new_x /= n 
             new_y /= n 
-            sp.x, sp.y = 0.4 * new_x + 0.6 * sp.x, 0.4 * new_y + 0.6 * sp.y
+            new_coords[r][c] = (0.4 * new_x + 0.6 * sp.x, 0.4 * new_y + 0.6 * sp.y)
+
+    for r in range(w_out):
+        for c in range(h_out):
+            sp = super_pixels[r][c]
+            sp.x, sp.y = new_coords[r][c]
 
 def associate():
     global super_pixels, palette 
