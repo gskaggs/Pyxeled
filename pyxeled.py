@@ -233,7 +233,6 @@ def sp_refine():
  
     # Lambertian smoothing
     new_coords = [[(0,0) for c in range(h_out)] for r in range(w_out)] 
-    new_colors = [[(0,0,0) for c in range(h_out)] for r in range(w_out)]  
     
     for r in range(w_out):
         for c in range(h_out):
@@ -251,10 +250,35 @@ def sp_refine():
             new_y /= n 
             new_coords[r][c] = (0.4 * new_x + 0.6 * sp.x, 0.4 * new_y + 0.6 * sp.y)
 
+    # Bilateral filter approximation
+    new_colors = [[[0,0,0] for c in range(h_out)] for r in range(w_out)]  
+    for r in range(w_out):
+        for c in range(h_out):
+            sp = super_pixels[r][c]
+            
+            dx = [-1, -1, -1, 0, 0, 1, 1, 1]
+            dy = [-1, 0, 1, -1, 1, -1, 0, 1] 
+            n = 0
+            avg_color = [0, 0, 0]
+            for i in range(8):
+                if in_bounds(dx[i]+r, dy[i]+c):
+                    global e
+                    next = super_pixels[dx[i]+r][dy[i]+c].sp_color
+                    weight = e ** (-1*abs(sp.sp_color[0] - next[0]))
+                    for j in range(3):
+                        avg_color[j] += weight * next[j]
+                    n += weight
+            for i in range(3):
+                avg_color[i] /= n
+
+            for i in range(3):
+                new_colors[r][c][i] = 0.5 * sp.sp_color[i] + 0.5 * avg_color[i]
+
     for r in range(w_out):
         for c in range(h_out):
             sp = super_pixels[r][c]
             sp.x, sp.y = new_coords[r][c]
+            sp.sp_color = tuple(new_colors[r][c])
 
 def associate():
     global super_pixels, palette 
