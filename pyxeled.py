@@ -4,6 +4,7 @@
 from skimage import color as color_lib
 from PIL import Image
 import threading
+from sklearn.decomposition import PCA 
 
 image = Image.open("input.png")
 image_data = image.load()
@@ -13,21 +14,36 @@ in_rgb = [[list(image_data[r, c]) for c in range(h_in)] for r in range(w_in)]
 in_rgb = [[[in_rgb[r][c][i] / 255 for i in range(3)] for c in range(h_in)] for r in range(w_in)]
 
 in_image = color_lib.rgb2lab(in_rgb)
+pca_form = []
+for r in range(w_in):
+    for c in range(h_in):
+        pca_form.append(list(in_image[r][c]))
+pca = PCA(n_components = 1) 
+pca.fit(pca_form)
 
-T = 25 
+print(pca.components_)
+print(pca.explained_variance_)
+
+T =  1.1 * pca.explained_variance_[0] 
 T_final = 1 
 alpha = 0.7
-delta = 1.5 
+delta = pca.components_[0]
+for i in range(3):
+    delta[i] *= 1.5 
 e = 2.71828
 epsilon_palette = 1
 epsilon_cluster = 0.25
 num_threads = 6
+is_debug = True
+
+#epsilon_palette = 0.5 # change > then continue iterating
+#epsilon_cluster = 0.75 # diff colors > then make new cluster
 
 K = 1
-K_max = 8
+K_max = 8 
 
-w_out = 22
-h_out = 32
+w_out = 128 
+h_out = 40 
 
 M = w_in * h_in 
 N = w_out * h_out
@@ -134,7 +150,6 @@ class SuperPixel:
             c[i] /= len(self.pixels)
 
         self.sp_color = tuple(c)
-#print(self.sp_color[0], self.sp_color[0], self.sp_color[0])
 
 
 
@@ -149,7 +164,7 @@ class Color:
 
     def perturb(self):
         global delta
-        self.color = (self.color[0] + delta, self.color[1] + delta, self.color[2] + delta)
+        self.color = (self.color[0] + delta[0], self.color[1] + delta[1], self.color[2] + delta[1])
 
 #######################################################################################################
 
@@ -299,7 +314,8 @@ def associate():
         for row in super_pixels:
             for sp in row:
                 palette[k].probability += sp.p_c[k] * sp.p_s
-        print("P_", k, palette[k].probability)
+        if is_debug:
+            print("P_", k, palette[k].probability)
 
 def palette_refine():
     global super_pixels, palette 
@@ -381,16 +397,17 @@ def saturate(out_lab):
 iterations = 0
 while T > T_final:
 #for i in range(3):
-    print("K", K)
-    print("T", T)
-    print("iterations", iterations)
+    if is_debug:    
+        print("K", K)
+        print("T", T)
+        print("iterations", iterations)
 
-    for k in range(K):
-        for h in range(len(clusters[k])):
-            for j in range(3):
-                print(palette[clusters[k][h]].color[j], end=" ")
+        for k in range(K):
+            for h in range(len(clusters[k])):
+                for j in range(3):
+                    print(palette[clusters[k][h]].color[j], end=" ")
+                print()
             print()
-        print()
 
     iterations += 1
 
@@ -405,7 +422,8 @@ while T > T_final:
         if K < K_max:
             expand()
 
-    print()
+    if is_debug:
+        print()
 
 
 
