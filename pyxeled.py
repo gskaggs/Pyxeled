@@ -24,7 +24,7 @@ pca.fit(pca_form)
 print(pca.components_)
 print(pca.explained_variance_)
 
-T =  1.1 * pca.explained_variance_[0] 
+T = 25  #1.1 * pca.explained_variance_[0] 
 T_final = 1 
 alpha = 0.7
 delta = pca.components_[0]
@@ -106,6 +106,10 @@ class SuperPixel:
         for pxl in self.pixels:
             self.x += pxl[0]
             self.y += pxl[1]
+        if len(self.pixels) == 0:
+            print(self.x, self.y, "pallete", self.pallete_color, "sp", self.sp_color)
+            print("super pixel without pixels failure")
+            exit()
         self.x /= len(self.pixels)
         self.y /= len(self.pixels)
 
