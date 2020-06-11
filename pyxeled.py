@@ -6,7 +6,7 @@ from PIL import Image
 import threading
 from sklearn.decomposition import PCA 
 
-image = Image.open("input.png")
+image = Image.open("input.jpg")
 image_data = image.load()
 
 w_in, h_in = image.size 
@@ -21,8 +21,9 @@ for r in range(w_in):
 pca = PCA(n_components = 1) 
 pca.fit(pca_form)
 
-print(pca.components_)
-print(pca.explained_variance_)
+print("Principal Component Axis:", pca.components_[0])
+print("PCA Variance:", pca.explained_variance_)
+print()
 
 T = 25  #1.1 * pca.explained_variance_[0] 
 T_final = 1 
@@ -42,8 +43,8 @@ is_debug = True
 K = 1
 K_max = 8 
 
-w_out = 128 
-h_out = 40 
+w_out = 22 
+h_out = 32 
 
 M = w_in * h_in 
 N = w_out * h_out
@@ -102,16 +103,17 @@ class SuperPixel:
         self.pixels = set()
 
     def update_pos(self):
-        self.x, self.y = 0, 0
+        x, y = 0, 0
         for pxl in self.pixels:
-            self.x += pxl[0]
-            self.y += pxl[1]
+            x += pxl[0]
+            y += pxl[1]
         if len(self.pixels) == 0:
             print(self.x, self.y, "pallete", self.pallete_color, "sp", self.sp_color)
             print("super pixel without pixels failure")
             exit()
-        self.x /= len(self.pixels)
-        self.y /= len(self.pixels)
+        x /= len(self.pixels)
+        y /= len(self.pixels)
+        self.x, self.y = x, y
 
     # update pallete color as well
     def normalize_probs(self):
