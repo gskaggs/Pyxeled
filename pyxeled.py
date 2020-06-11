@@ -5,6 +5,7 @@ from skimage import color as color_lib
 from PIL import Image
 import threading
 from sklearn.decomposition import PCA 
+import math
 
 image = Image.open("input.jpg")
 image_data = image.load()
@@ -25,7 +26,7 @@ print("Principal Component Axis:", pca.components_[0])
 print("PCA Variance:", pca.explained_variance_)
 print()
 
-T = 25  #1.1 * pca.explained_variance_[0] 
+T = 35  #1.1 * pca.explained_variance_[0] 
 T_final = 1 
 alpha = 0.7
 delta = pca.components_[0]
@@ -41,10 +42,10 @@ is_debug = True
 #epsilon_cluster = 0.75 # diff colors > then make new cluster
 
 K = 1
-K_max = 8 
+K_max = 16 
 
-w_out = 22 
-h_out = 32 
+w_out = 64 
+h_out = 22 
 
 M = w_in * h_in 
 N = w_out * h_out
@@ -84,6 +85,8 @@ class SuperPixel:
         self.p_c = [0.5, 0.5]
         self.sp_color = (0, 0 , 0)
         self._lock = threading.Lock()
+        self.original_xy = (x, y)
+        self.original_color = in_image[int(math.floor(x))][int(math.floor(y))]
 
     def cost(self, x0, y0):
         global in_image
@@ -102,18 +105,6 @@ class SuperPixel:
     def clear_pixels(self):
         self.pixels = set()
 
-    def update_pos(self):
-        x, y = 0, 0
-        for pxl in self.pixels:
-            x += pxl[0]
-            y += pxl[1]
-        if len(self.pixels) == 0:
-            print(self.x, self.y, "pallete", self.pallete_color, "sp", self.sp_color)
-            print("super pixel without pixels failure")
-            exit()
-        x /= len(self.pixels)
-        y /= len(self.pixels)
-        self.x, self.y = x, y
 
     # update pallete color as well
     def normalize_probs(self):
@@ -142,12 +133,29 @@ class SuperPixel:
                 hi = prob
                 self.palette_color = color
 
-
+    def update_pos(self):
+        x, y = 0, 0
+        for pxl in self.pixels:
+            x += pxl[0]
+            y += pxl[1]
+        if len(self.pixels) == 0:
+            print(self.x, self.y, "pallete", self.pallete_color, "sp", self.sp_color)
+            print("super pixel without pixels failure")
+            print()
+            self.x, self.y = self.original_xy
+        else:
+            x /= len(self.pixels)
+            y /= len(self.pixels)
+            self.x, self.y = x, y
 
     def update_sp_color(self):
         global in_image
-        c = [0, 0, 0]        
+
+        if len(self.pixels) == 0:
+            self.color = self.original_color
+            return None
         
+        c = [0, 0, 0]        
         for pxl in self.pixels:
             for i in range(3):
                 c[i] += in_image[pxl[0]][pxl[1]][i]
