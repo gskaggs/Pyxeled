@@ -7,7 +7,12 @@ import threading
 from sklearn.decomposition import PCA 
 import math
 
-image = Image.open("input.jpg")
+in_image_name = input()
+out_image_name = input()
+w_out, h_out = map(int, input().split())
+K_max = int(input())  
+
+image = Image.open(in_image_name)
 image_data = image.load()
 
 w_in, h_in = image.size 
@@ -22,12 +27,9 @@ for r in range(w_in):
 pca = PCA(n_components = 1) 
 pca.fit(pca_form)
 
-print("Principal Component Axis:", pca.components_[0])
-print("PCA Variance:", pca.explained_variance_)
-print()
 
 T = 35  #1.1 * pca.explained_variance_[0] 
-T_final = 1 
+T_final = 22 
 alpha = 0.7
 delta = pca.components_[0]
 for i in range(3):
@@ -36,16 +38,18 @@ e = 2.71828
 epsilon_palette = 1
 epsilon_cluster = 0.25
 num_threads = 6
-is_debug = True
+is_debug = False 
+
+if is_debug:
+        print("Principal Component Axis:", pca.components_[0])
+        print("PCA Variance:", pca.explained_variance_)
+        print()
 
 #epsilon_palette = 0.5 # change > then continue iterating
 #epsilon_cluster = 0.75 # diff colors > then make new cluster
 
 K = 1
-K_max = 32 
 
-w_out = 128 
-h_out = 44 
 
 M = w_in * h_in 
 N = w_out * h_out
@@ -463,7 +467,7 @@ for r in range(w_out):
     for c in range(h_out):
         out_data[r,c] = tuple(out_image[r][c])
 
-output.save("output.png")
+output.save(out_image_name)
 exit()
 
     
