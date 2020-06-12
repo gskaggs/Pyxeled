@@ -42,10 +42,10 @@ is_debug = True
 #epsilon_cluster = 0.75 # diff colors > then make new cluster
 
 K = 1
-K_max = 16 
+K_max = 32 
 
-w_out = 64 
-h_out = 22 
+w_out = 128 
+h_out = 44 
 
 M = w_in * h_in 
 N = w_out * h_out
