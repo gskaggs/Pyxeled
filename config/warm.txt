@@ -1,0 +1,4 @@
+input_images/warm.png
+output_images/warm.png
+128 83 
+64

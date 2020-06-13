@@ -1,0 +1,4 @@
+input_images/green.png
+output_images/green.png
+500 148 
+32

@@ -1,4 +1,0 @@
-input_images/obama.png
-output_images/obama_out.png
-32 22
-32
