@@ -1,16 +1,17 @@
-
-# Configuration
-
 from skimage import color as color_lib
 from PIL import Image
 import threading
 from sklearn.decomposition import PCA 
 import math
 
+# Configuration
+
 in_image_name = input()
 out_image_name = input()
 w_out, h_out = map(int, input().split())
 K_max = int(input())  
+
+# Input image setup
 
 image = Image.open(in_image_name)
 image_data = image.load()
@@ -27,9 +28,12 @@ for r in range(w_in):
 pca = PCA(n_components = 1) 
 pca.fit(pca_form)
 
+# Constants and initialization
 
-T = 35  #1.1 * pca.explained_variance_[0] 
-T_final = 22 
+T = 35                          # Alternatively, T = 1.1 * pca.explained_variance_[0] 
+T_final = 1 
+K = 1
+
 alpha = 0.7
 delta = pca.components_[0]
 for i in range(3):
@@ -38,29 +42,24 @@ e = 2.71828
 epsilon_palette = 1
 epsilon_cluster = 0.25
 num_threads = 6
-is_debug = False 
+is_debug = False
+
+M = w_in * h_in 
+N = w_out * h_out
 
 if is_debug:
         print("Principal Component Axis:", pca.components_[0])
         print("PCA Variance:", pca.explained_variance_)
         print()
 
-#epsilon_palette = 0.5 # change > then continue iterating
-#epsilon_cluster = 0.75 # diff colors > then make new cluster
-
-K = 1
-
-
-M = w_in * h_in 
-N = w_out * h_out
-
-
-
 #######################################################################################################
+
+# Main classes 
+
 def color_diff(c1, c2):
     res = (c1[0] - c2[0])**2 + (c1[1] - c2[1])**2 + (c1[2] - c2[2])**2
     res = res**0.5
-    return res #(sum( [(c1[i] - c2[i])**2 for i in range(3)] ))**0.5
+    return res 
 
 class Coords:
     def __init__(self):
@@ -143,9 +142,10 @@ class SuperPixel:
             x += pxl[0]
             y += pxl[1]
         if len(self.pixels) == 0:
-            print(self.x, self.y, "pallete", self.pallete_color, "sp", self.sp_color)
-            print("super pixel without pixels failure")
-            print()
+            if is_debug: 
+                print(self.x, self.y, "pallete", self.pallete_color, "sp", self.sp_color)
+                print("super pixel without pixels failure")
+                print()
             self.x, self.y = self.original_xy
         else:
             x /= len(self.pixels)
@@ -168,8 +168,6 @@ class SuperPixel:
             c[i] /= len(self.pixels)
 
         self.sp_color = tuple(c)
-
-
 
 class Color:
 
@@ -212,6 +210,9 @@ palette = [Color(init_color, 0.5), Color(init_color, 0.5)]
 palette[1].perturb()
 
 #######################################################################################################
+
+# Main methods
+
 def in_bounds(r, c):
     global w_out, h_out
     return r >= 0 and c >= 0 and r < w_out and c < h_out
@@ -321,10 +322,6 @@ def associate():
             for k in range(len(palette)):
                 sp.p_c[k] = palette[k].condit_prob(sp)
             sp.normalize_probs()
-# for p in sp.p_c:
-#                print(p, end=" ")
-#            print()
-            
 
     for k in range(len(palette)):
         palette[k].probability = 0
@@ -412,9 +409,10 @@ def saturate(out_lab):
 
 #######################################################################################################
 
+# High level algorithm
+
 iterations = 0
 while T > T_final:
-#for i in range(3):
     if is_debug:    
         print("K", K)
         print("T", T)
@@ -443,13 +441,12 @@ while T > T_final:
     if is_debug:
         print()
 
-
+# Saturation and output
 
 out_lab = []
 for r in range(w_out):
     cur = []
     for c in range(h_out):
-        # Should use cluster, not sub-cluster  pallete_color
         cur.append(list(super_pixels[r][c].pallete_color))
     out_lab.append(cur)
 
@@ -468,8 +465,4 @@ for r in range(w_out):
         out_data[r,c] = tuple(out_image[r][c])
 
 output.save(out_image_name)
-exit()
-
-    
-
 
