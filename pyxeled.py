@@ -20,13 +20,16 @@ w_in, h_in = image.size
 in_rgb = [[list(image_data[r, c]) for c in range(h_in)] for r in range(w_in)]
 in_rgb = [[[in_rgb[r][c][i] / 255 for i in range(3)] for c in range(h_in)] for r in range(w_in)]
 
+# Algorithm was used on LAB colors in the original paper
 in_image = color_lib.rgb2lab(in_rgb)
-pca_form = []
+
+# sklearn PCA requires data with size num_samples x num_features (in our case, num_pixels x num_dimensions)
+pca_form = []                   
 for r in range(w_in):
     for c in range(h_in):
         pca_form.append(list(in_image[r][c]))
 pca = PCA(n_components = 1) 
-pca.fit(pca_form)
+pca.fit(pca_form)               # PCA = Principal Component Axis. This is the axis with the most variance.
 
 # Constants and initialization
 
@@ -42,7 +45,7 @@ e = 2.71828
 epsilon_palette = 1
 epsilon_cluster = 0.25
 num_threads = 6
-is_debug = False
+is_debug = False                # Mutes debug print statements
 
 M = w_in * h_in 
 N = w_out * h_out
@@ -61,6 +64,7 @@ def color_diff(c1, c2):
     res = res**0.5
     return res 
 
+# Intended purpose is to help with multithreading race conditions
 class Coords:
     def __init__(self):
         self.n = 0
@@ -77,29 +81,28 @@ class Coords:
 
     def reset(self):
         self.n = 0
-            
 
 class SuperPixel:
     def __init__(self, x, y, c):
         global N
-        self.x, self.y, self.pallete_color = x, y, c
-        self.p_s = 1 / N
+        self.x, self.y = x, y 
+        self.pallete_color = c                  # Color used for refining palette
+        self.p_s = 1 / N                        # Probability of the super pixel (uniform for now)
         self.pixels = set()
-        self.p_c = [0.5, 0.5]
-        self.sp_color = (0, 0 , 0)
+        self.p_c = [0.5, 0.5]                   # Conditional probability this super pixel belongs
+                                                # to a given palette color
+        self.sp_color = (0, 0 , 0)              # Color used for refining super pixels
         self._lock = threading.Lock()
         self.original_xy = (x, y)
         self.original_color = in_image[int(math.floor(x))][int(math.floor(y))]
 
     def cost(self, x0, y0):
         global in_image
-
         in_color = in_image[x0][y0]
         c_diff = color_diff(in_color, self.pallete_color)         
         spatial_diff = ((self.x-x0)**2 + (self.y-y0)**2)**0.5
 
         return c_diff + 45 * ((N / M)**0.5) * spatial_diff;
-
 
     def add_pixel(self, x0, y0):
         with self._lock:
@@ -108,8 +111,6 @@ class SuperPixel:
     def clear_pixels(self):
         self.pixels = set()
 
-
-    # update pallete color as well
     def normalize_probs(self):
         global palette, clusters, K
         denom = sum(self.p_c)
@@ -169,8 +170,8 @@ class SuperPixel:
 
         self.sp_color = tuple(c)
 
+# Palette Color
 class Color:
-
     def __init__(self, c, p):
         self.color, self.probability = c, p
 
@@ -202,8 +203,7 @@ coords = Coords()
 X = [(r * w_in) // w_out for r in range(w_out)]
 Y = [(c * h_in) // h_out for c in range(h_out)]
 init_color = avg_color(in_image, M)
-super_pixels = [[SuperPixel(x,y,init_color) for y in Y] for x in X]
-
+super_pixels = [[SuperPixel(x, y, init_color) for y in Y] for x in X]
 
 clusters = [(0,1)]
 palette = [Color(init_color, 0.5), Color(init_color, 0.5)]
@@ -217,6 +217,7 @@ def in_bounds(r, c):
     global w_out, h_out
     return r >= 0 and c >= 0 and r < w_out and c < h_out
 
+# Used to multithread sp_refine
 def thread_function():
     global coords, super_pixels
     while True:
@@ -243,6 +244,7 @@ def thread_function():
         else:
             break
 
+# Refine the super pixels
 def sp_refine():
     global super_pixels, in_image, coords
     for row in super_pixels:
@@ -265,7 +267,7 @@ def sp_refine():
             sp.update_pos()
             sp.update_sp_color()
  
-    # Lambertian smoothing
+    # Laplacian smoothing
     new_coords = [[(0,0) for c in range(h_out)] for r in range(w_out)] 
     
     for r in range(w_out):
@@ -314,6 +316,7 @@ def sp_refine():
             sp.x, sp.y = new_coords[r][c]
             sp.sp_color = tuple(new_colors[r][c])
 
+# Associate super pixels with palette colors
 def associate():
     global super_pixels, palette 
     for row in super_pixels:
@@ -348,6 +351,7 @@ def palette_refine():
 
     return total_change
 
+# Make new palette clusters if necessary
 def expand():
     global clusters, palette, epsilon_cluster, K, K_max
 
@@ -450,13 +454,10 @@ for r in range(w_out):
         cur.append(list(super_pixels[r][c].pallete_color))
     out_lab.append(cur)
 
-prev = out_lab[0][0][1]
 saturate(out_lab)
-assert out_lab[0][0][1] == 1.1*prev
 
 out_image = color_lib.lab2rgb(out_lab)
 out_image = [[[int(round(out_image[r][c][i] * 255)) for i in range(3)] for c in range(h_out)] for r in range(w_out)] 
-
 
 output = Image.new("RGB", (w_out, h_out)) 
 out_data = output.load()
