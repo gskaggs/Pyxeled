@@ -1,4 +1,0 @@
-input_images/pearl_earing.png
-output_images/pearl_earing.png
-64 128
-32

@@ -1,0 +1,4 @@
+input_images/mountains.png
+output_images/mountains.png
+128 83 
+64

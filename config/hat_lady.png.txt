@@ -1,4 +1,0 @@
-input_images/hat_lady.png
-output_images/hat_lady.png
-64 64
-32
