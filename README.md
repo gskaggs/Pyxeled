@@ -13,3 +13,8 @@ This program takes 4 parameters as arguemnts from *stdin:*
 Each of these four parameters are entered on their own line. For an example of correct format, refer to *config/mountains.txt*.
 
 Additionally, there are a number of configuration variables in *pyxeled.py* which may be useful for development purposes. Most of these variables are artifacts of the Mass Constrained Determenistic Annealing (MCDA) algorithm explained in depth in the above paper. All of these variables are set to values which have emperically performed well on the images I've used in testing this project.
+
+### Execution
+There are two recommended ways of executing this project. 
+1. File redirect for an individual configuration file. For example, `python3 pyxeled.py < config/mountains.txt`
+1. Alternatively, the script *run.sh* automates this proces by running *pyxeled.py* on every configuration file in the *config* directory.
